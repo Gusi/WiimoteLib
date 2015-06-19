@@ -8,6 +8,8 @@
 //	for more information
 //////////////////////////////////////////////////////////////////////////////////
 
+#define POLL_READING
+
 using System;
 using System.Runtime.InteropServices;
 using System.Diagnostics;
@@ -76,8 +78,12 @@ namespace WiimoteLib
 		// read/write handle to the device
 		private SafeFileHandle mHandle;
 
+#if !POLL_READING
 		// a pretty .NET stream to read/write from/to
 		private FileStream mStream;
+#else
+		// http://stackoverflow.com/questions/19982585/check-if-safefilehandle-has-data-to-read 
+#endif
 
 		// read data buffer
 		private byte[] mReadBuff;
@@ -242,11 +248,13 @@ namespace WiimoteLib
 				// if the vendor and product IDs match up
 				if(attrib.VendorID == VID && (attrib.ProductID == PID || attrib.ProductID == PID_TR))
 				{
+#if !POLL_READING
 					// create a nice .NET FileStream wrapping the handle above
 					mStream = new FileStream(mHandle, FileAccess.ReadWrite, REPORT_LENGTH, true);
 
 					// start an async read operation on it
 					BeginAsyncRead();
+#endif
 
 					// read the calibration info from the controller
 					try
@@ -286,14 +294,17 @@ namespace WiimoteLib
 		/// </summary>
 		public void Disconnect()
 		{
+#if !POLL_READING
 			// close up the stream and handle
 			if(mStream != null)
 				mStream.Close();
+#endif
 
 			if(mHandle != null)
 				mHandle.Close();
 		}
 
+#if !POLL_READING
 		/// <summary>
 		/// Start reading asynchronously from the controller
 		/// </summary>
@@ -342,6 +353,27 @@ namespace WiimoteLib
 				Debug.WriteLine(e.Message);
 			}
 		}
+#else
+		[DllImport("kernel32.dll", SetLastError = true)]
+		private static extern bool ReadFile(SafeFileHandle hFile, byte[] lpBuffer, uint nNumberOfBytesToRead, ref uint lpNumberOfBytesRead, IntPtr lpOverlapped);
+
+		public void CallExternalRead()
+		{
+			byte[] buff = new byte[REPORT_LENGTH];
+			uint readed = 0;
+			if (ReadFile(mHandle, buff, REPORT_LENGTH, ref readed, IntPtr.Zero))
+			{
+				Debug.Assert(readed == REPORT_LENGTH);
+				// parse it
+				if (ParseInputReport(buff))
+				{
+					// post an event
+					if (WiimoteChanged != null)
+						WiimoteChanged(this, new WiimoteChangedEventArgs(mWiimoteState));
+				}
+			}
+		}
+#endif
 
 		/// <summary>
 		/// Parse a report sent by the Wiimote
@@ -393,7 +425,9 @@ namespace WiimoteLib
 					mWiimoteState.LEDState.LED3 = (buff[3] & 0x40) != 0;
 					mWiimoteState.LEDState.LED4 = (buff[3] & 0x80) != 0;
 
+#if !POLL_READING
 					BeginAsyncRead();
+#endif
 					byte[] extensionType = ReadData(REGISTER_EXTENSION_TYPE_2, 1);
 					Debug.WriteLine("Extension byte=" + extensionType[0].ToString("x2"));
 
@@ -407,7 +441,9 @@ namespace WiimoteLib
 
 						if(extension)
 						{
+#if !POLL_READING
 							BeginAsyncRead();
+#endif
 							InitializeExtension(extensionType[0]);
 						}
 						else
@@ -449,8 +485,10 @@ namespace WiimoteLib
 				WriteData(REGISTER_EXTENSION_INIT_2, 0x00);
 			}
 
+#if !POLL_READING
 			// start reading again
 			BeginAsyncRead();
+#endif
 
 			byte[] buff = ReadData(REGISTER_EXTENSION_TYPE, 6);
 			long type = ((long)buff[0] << 40) | ((long)buff[1] << 32) | ((long)buff[2]) << 24 | ((long)buff[3]) << 16 | ((long)buff[4]) << 8 | buff[5];
@@ -1216,8 +1254,10 @@ namespace WiimoteLib
 			Debug.WriteLine("WriteReport: " + Enum.Parse(typeof(OutputReport), buff[0].ToString()));
 			if(mAltWriteMethod)
 				HIDImports.HidD_SetOutputReport(this.mHandle.DangerousGetHandle(), buff, (uint)buff.Length);
+#if !POLL_READING
 			else if(mStream != null)
 				mStream.Write(buff, 0, REPORT_LENGTH);
+#endif
 
 			if(buff[0] == (byte)OutputReport.WriteMemory)
 			{
