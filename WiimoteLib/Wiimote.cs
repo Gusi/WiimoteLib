@@ -36,6 +36,7 @@ namespace WiimoteLib
 		// VID = Nintendo, PID = Wiimote
 		private const int VID = 0x057e;
 		private const int PID = 0x0306;
+		private const int PID_TR = 0x0330;
 
 		// sure, we could find this out the hard way using HID, but trust me, it's 22
 		private const int REPORT_LENGTH = 22;
@@ -185,7 +186,7 @@ namespace WiimoteLib
 					if(HIDImports.HidD_GetAttributes(mHandle.DangerousGetHandle(), ref attrib))
 					{
 						// if the vendor and product IDs match up
-						if(attrib.VendorID == VID && attrib.ProductID == PID)
+						if(attrib.VendorID == VID && (attrib.ProductID == PID || attrib.ProductID == PID_TR))
 						{
 							// it's a Wiimote
 							Debug.WriteLine("Found one!");
@@ -239,7 +240,7 @@ namespace WiimoteLib
 			if(HIDImports.HidD_GetAttributes(mHandle.DangerousGetHandle(), ref attrib))
 			{
 				// if the vendor and product IDs match up
-				if(attrib.VendorID == VID && attrib.ProductID == PID)
+				if(attrib.VendorID == VID && (attrib.ProductID == PID || attrib.ProductID == PID_TR))
 				{
 					// create a nice .NET FileStream wrapping the handle above
 					mStream = new FileStream(mHandle, FileAccess.ReadWrite, REPORT_LENGTH, true);
@@ -458,12 +459,14 @@ namespace WiimoteLib
 					mWiimoteState.ExtensionType = ExtensionType.None;
 					return;
 				case ExtensionType.Nunchuk:
+				case ExtensionType.Nunchuk_TR:
 				case ExtensionType.ClassicController:
 				case ExtensionType.Guitar:
 				case ExtensionType.BalanceBoard:
 				case ExtensionType.Drums:
 				case ExtensionType.TaikoDrum:
 				case ExtensionType.MotionPlus:
+				case ExtensionType.MotionPlus_TR:
 					mWiimoteState.ExtensionType = (ExtensionType)type;
 					this.SetReportType(InputReport.ButtonsExtension, true);
 					break;
@@ -474,6 +477,7 @@ namespace WiimoteLib
 			switch(mWiimoteState.ExtensionType)
 			{
 				case ExtensionType.Nunchuk:
+				case ExtensionType.Nunchuk_TR:
 					buff = ReadData(REGISTER_EXTENSION_CALIBRATION, 16);
 
 					mWiimoteState.NunchukState.CalibrationInfo.AccelCalibration.X0 = buff[0];
@@ -535,6 +539,7 @@ namespace WiimoteLib
 					mWiimoteState.BalanceBoardState.CalibrationInfo.Kg34.BottomLeft =	(short)((short)buff[26] << 8 | buff[27]);
 					break;
 				case ExtensionType.MotionPlus:
+				case ExtensionType.MotionPlus_TR:
 					// someday...
 					break;
 				case ExtensionType.Guitar:
@@ -678,6 +683,7 @@ namespace WiimoteLib
 			switch(mWiimoteState.ExtensionType)
 			{
 				case ExtensionType.Nunchuk:
+				case ExtensionType.Nunchuk_TR:
 					mWiimoteState.NunchukState.RawJoystick.X = buff[offset];
 					mWiimoteState.NunchukState.RawJoystick.Y = buff[offset + 1];
 					mWiimoteState.NunchukState.AccelState.RawValues.X = buff[offset + 2];
@@ -910,6 +916,7 @@ namespace WiimoteLib
 					mWiimoteState.TaikoDrumState.OuterRight = (buff[offset + 5] & 0x08) == 0;
 					break;
 				case ExtensionType.MotionPlus:
+				case ExtensionType.MotionPlus_TR:
 					mWiimoteState.MotionPlusState.YawFast =		((buff[offset + 3] & 0x02) >> 1) == 0;
 					mWiimoteState.MotionPlusState.PitchFast =	((buff[offset + 3] & 0x01) >> 0) == 0;
 					mWiimoteState.MotionPlusState.RollFast =	((buff[offset + 4] & 0x02) >> 1) == 0;

@@ -82,6 +82,7 @@ namespace WiimoteTest
 			switch(ws.ExtensionType)
 			{
 				case ExtensionType.Nunchuk:
+				case ExtensionType.Nunchuk_TR:
 					lblChuk.Text = ws.NunchukState.AccelState.Values.ToString();
 					lblChukJoy.Text = ws.NunchukState.Joystick.ToString();
 					chkC.Checked = ws.NunchukState.C;
@@ -183,6 +184,7 @@ namespace WiimoteTest
 					break;
 
 				case ExtensionType.MotionPlus:
+				case ExtensionType.MotionPlus_TR:
 					lblMotionPlus.Text = ws.MotionPlusState.RawValues.ToString();
 					clbSpeed.SetItemChecked(0, ws.MotionPlusState.YawFast);
 					clbSpeed.SetItemChecked(1, ws.MotionPlusState.PitchFast);
