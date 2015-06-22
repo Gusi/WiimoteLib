@@ -10,6 +10,7 @@ namespace WiimoteTest
 		// map a wiimote to a specific state user control dealie
 		Dictionary<Guid,WiimoteInfo> mWiimoteMap = new Dictionary<Guid,WiimoteInfo>();
 		WiimoteCollection mWC;
+		SocketHelper mSH = new SocketHelper();
 
 		public MultipleWiimoteForm()
 		{
@@ -68,6 +69,7 @@ namespace WiimoteTest
 		{
 			WiimoteInfo wi = mWiimoteMap[((Wiimote)sender).ID];
 			wi.UpdateState(e);
+			mSH.SendData(e);
 		}
 
 		void wm_WiimoteExtensionChanged(object sender, WiimoteExtensionChangedEventArgs e)
@@ -75,6 +77,7 @@ namespace WiimoteTest
 			// find the control for this Wiimote
 			WiimoteInfo wi = mWiimoteMap[((Wiimote)sender).ID];
 			wi.UpdateExtension(e);
+			mSH.SendData(e);
 
 			if(e.Inserted)
 				((Wiimote)sender).SetReportType(InputReport.IRExtensionAccel, true);
